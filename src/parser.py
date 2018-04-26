@@ -2,7 +2,12 @@ import logging
 import sys
 import re
 
-
+# Extract enums from C++ source code
+# NOTE: this is not a complete C++ parser!
+#       it just detects namespace scopes (namespace, class, struct),
+#       removes everything except enums and puts the result into a list
+#
+# the output list contains #!PUSH_SCOPE=<name> and #!POP_SCOPE
 class Parser:
   enums = []
 
@@ -25,6 +30,7 @@ class Parser:
       n = n - 1 if (self.get() == close) else n
       self.next()
 
+  # read a word from the internal buffer self.data
   def getWord(self):
     self.skipWhitespace()
     str = ''
@@ -34,13 +40,15 @@ class Parser:
     self.skipWhitespace()
     return str
 
+  # Advance the internal iterator by one
   def next(self):
     self.it += 1
-    return self.data[self.it] if (self.notEOF()) else ''
 
+  # Get the char at the current position
   def get(self):
     return self.data[self.it] if self.notEOF() else ''
 
+  # Check if the end was reached
   def notEOF(self):
     return self.it < len(self.data)
 
@@ -80,6 +88,7 @@ class Parser:
     return True
 
   # Make the C++ scopes more readable and remove funcrion bodies, etc.
+  # Outputs a list with just c++ commands, #!PUSH_SCOPE=<id>, #!POP_SCOPE and #!ACC=<normal|hidden>
   def scopeWalker(self):
     newData = ''
     stack = []
@@ -97,7 +106,8 @@ class Parser:
 
         # A scope we care about closed
         if (self.get() == '}'):
-          newData += '#!POP_SCOPE=' + stack.pop() + ';'
+          newData += '#!POP_SCOPE;'
+          stack.pop()
           self.next()
           continue
 
@@ -149,9 +159,38 @@ class Parser:
     newData = re.sub(';[^#;]*#!', ';#!', newData) # remove stuff in front of #!<command>
     return newData.split(';')
 
+  # Removes private scopes, and non enum c++ statements
   def scopeCleaner(self, li):
+    # remove all non control and non enum entries
+    reg = re.compile('(^#![A-Z_]+.*$)|(^(typedef[ \t]+)?enum[ \t]+)')
+    li = [i for i in li if reg.match(i)]
+
     newList = []
+    stack = 0
+
     for i in li:
+      # Remove entire hidden scopes
+      if(stack > 1):
+        if (i == '#!POP_SCOPE'):
+          stack -= 1
+        elif (re.search('#!PUSH_SCOPE', i)):
+          stack += 1
+
+        continue
+
+      if(stack == 1):
+        if(i == '#!POP_SCOPE' or i == '#!ACC=normal'):
+          stack = 0
+        elif(re.search('#!PUSH_SCOPE', i)):
+          stack += 1
+          continue
+        else: continue
+
+      if( i == '#!ACC=normal'): continue # Remove
+      if( i == '#!ACC=hidden'):
+        stack = 1
+        continue
+
       newList.append(i)
 
     return newList
@@ -164,7 +203,5 @@ class Parser:
 
     self.cleanup()
     scopeList = self.scopeWalker()
-    scopeList = self.scopeCleaner(scopeList)
-    print(scopeList)
 
-    return True
+    return self.scopeCleaner(scopeList)
