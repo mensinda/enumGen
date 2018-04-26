@@ -4,7 +4,7 @@ import sys
 import argparse
 import os
 import logging
-from src import config, parser
+from src import config, parser, enums
 
 
 class EnumGenerator:
@@ -31,7 +31,7 @@ class EnumGenerator:
       logging.basicConfig(format=fmt, level=logging.WARNING)
 
   def run(self):
-    """Config setup"""
+    # Config setup
     if (self.args.config):
       file = self.args.config[0]
       logging.info('Loading config file {}'.format(os.path.basename(file.name)))
@@ -46,12 +46,12 @@ class EnumGenerator:
       self.cfg.writeJSON(file)
       return 0
 
-    """Begin parsing"""
-    parsers = []
+    # Begin parsing
+    parsedEnums = enums.Enums()
 
     logging.info('Begin Parsing files')
     for i in self.args.input:
-      """Check for files to skip"""
+      # Check for files to skip
       skip = True
       for j in self.cfg.cfg['extract']['inputFileTypes']:
         if(i.name.endswith('.{}'.format(j))):
@@ -66,8 +66,7 @@ class EnumGenerator:
       if (not p.parse()):
         return 1
 
-      parsers.append(p)
-
+      parsedEnums.addParser(p)
     return 0
 
 

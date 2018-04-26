@@ -202,6 +202,10 @@ class Parser:
     self.it = 0
 
     self.cleanup()
-    scopeList = self.scopeWalker()
+    self.scopeList = self.scopeWalker()
+    self.scopeList = self.scopeCleaner(self.scopeList)
 
-    return self.scopeCleaner(scopeList)
+    return True
+
+  def getResult(self):
+    return self.scopeList
