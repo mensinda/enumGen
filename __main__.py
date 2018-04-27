@@ -3,4 +3,4 @@
 import enumGen
 import sys
 
-sys.exit(enumGen.main())
+sys.exit(enumGen.EnumGenerator().run())

@@ -24,19 +24,21 @@
     return false;                                                                                                      \
   }
 
+#define ABSOLUTE 42
+
 using namespace std;
 
 namespace test {
 
 enum [[deprecated("because")]] ENUM1 {
-  VAL1, // asdf /* */
-      VAL2 /* abc // */, VAL3
+  VAL1 = 0x01, // asdf /* */
+      VAL2, VAL3 = 0b110 /* abc // */, VAL4
 };
 
-enum class ENUM2 { AAA = 3, BBB, CCC = AAA, DDD = 4 } asdf;
+enum class ENUM2 { AAA = 3, BBB, CCC = AAA + 1, DDD = 5, EEE = 2, FFF, GGG } asdf;
 
 typedef enum { A, B, C, D } Meh;
-typedef enum class Asdf { A, B, C, D } Qwerty;
+typedef enum class Asdf { A, B = 3, C, D } Qwerty;
 
 struct ABC {
   int a;
@@ -51,11 +53,19 @@ class AAClass {
   int i;
 };
 
-class TestClass final : public AAClass {
+// Nightmare template
+template <typename T, template <typename, typename> class ContainerType, typename Alloc = std::allocator<T>>
+class Stack {
+  ContainerType<T, Alloc> container;
+  // ...
+};
+
+class [[deprecated("Ha Ha Ha")]] alignas(64) TestClass final : public AAClass {
   enum PrivateEnum { P_AAA, P_BBB };
   Asdf             aaa;
   Qwerty           bbb;
   Meh              stuff;
+  int              arr[20];
   std::vector<int> intVec = {1, 4, 6, 8};
   std::string      str =
       "\
@@ -69,14 +79,18 @@ class TestClass final : public AAClass {
 
  public:
   enum ABC { WHY, DOES, THIS, CASE, EXIST };
-  enum class BLEH : int { THIS, IS, AN, ABSOLUTE, NIGHTMARE };
+  enum struct BLEH : int { THIS, IS, AN = ABSOLUTE, NIGHTMARE = (1 << 5), TO, PARSE };
+
+  struct CfgStruct {
+    enum class Values { Val1, Val2, Val3 } tmp;
+  };
 
   TestClass() = default;
   TestClass(int a, int c = 0) : aaa(Asdf::A) {
     (void)a;
     (void)c;
     if (a == 0) {
-      bbb = Asdf::B;
+      bbb = Qwerty::B;
     }
   }
 

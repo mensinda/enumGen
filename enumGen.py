@@ -4,6 +4,7 @@ import sys
 import argparse
 import os
 import logging
+import json
 from src import config, parser, enums
 
 
@@ -67,6 +68,7 @@ class EnumGenerator:
         return 1
 
       parsedEnums.addParser(p)
+
     return 0
 
 
