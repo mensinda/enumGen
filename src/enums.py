@@ -5,14 +5,16 @@ import logging
 class Enums:
   enums = []
 
-  def addEnum(self, scope, name, entries, blackList):
+  def addEnum(self, scope, isScoped, name, entries, blackList):
     self.enums.append({
       'scope': scope,
+      'isScoped': True if (isScoped) else False,
       'name': name,
       'entries': entries,
       'blackList': blackList
     })
-    logging.info('Found enum "{}" with {} entries with {} duplicates detected'.format(name, len(entries), len(blackList)))
+    logging.info(
+      'Found enum "{}" with {} entries with {} duplicates detected'.format(name, len(entries), len(blackList)))
 
   def parseEnum(self, str, scope):
     # Get name and scope
@@ -28,8 +30,6 @@ class Enums:
     nameList = list(filter(None, nameList))  # remove empty entries
 
     name = nameList[0] if (not isTypedef) else nameList[-1]
-    if (isClass):
-      scope += '::' + name
 
     ### Parse the enum body
     body = re.sub('(^[^{]+{)|(}[^}]*$)', '', str)  # only the enum body
@@ -71,7 +71,7 @@ class Enums:
 
       enums[en] = value
 
-    self.addEnum(scope, name, enums, blackList)
+    self.addEnum(scope, isClass, name, enums, blackList)
     return True
 
   def addEnumsFromList(self, li):

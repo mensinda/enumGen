@@ -4,22 +4,17 @@ import json
 class Config:
   cfg = {
     'class': {
-      'className': 'Enum2Str',
       'funcName': 'toStr',
       'namespace': '',
-      'useConstexpr': False,
-      'useCStrings': False
+      'useNamespace': False,
+      'enableBitfields': True,
+      'bitfieldType': 'uint64_t'
     },
     'generator': {
-      'path': '.',
-      'indentStr': '  ',
-      'bitfieldConcat': ' | ',
-      'compact': False,
-      'enableBitfields': True
-    },
-    'extract': {
-      'inputFileTypes': ['h', 'hpp', 'h++', 'hxx', 'H', 'HPP', 'H++', 'HXX'],
-      'blacklistEnums': []
+      'hppFile': '@CLASS_NAME@.hpp',
+      'cppFile': '@CLASS_NAME@.cpp',
+      'indent': 2,
+      'bitfieldConcat': ' | '
     }
   }
 

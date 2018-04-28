@@ -3,6 +3,7 @@
 .idea/
 *.kdev4
 cmake-build-debug/
+testDir/
 
 ## File-based project format:
 *.iws
