@@ -95,7 +95,9 @@ class EnumGenerator:
       gen = generate.Generator(self.cfg.cfg, self.args.cls)
       for i in self.args.enumFiles:
         data = json.load(i)
-        gen.addEnums(data['file'], data['enums'])
+
+        if 'file' in data and 'enums' in data:
+          gen.addEnums(data['file'], data['enums'])
 
       gen.write(dir, projectRoot)
 

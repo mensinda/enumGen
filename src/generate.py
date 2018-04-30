@@ -155,6 +155,27 @@ std::string {3}::{2}( {0} _var ) noexcept {{
       str += self.indent(1) + '}\n}'
 
     if self.cfg['class']['enableBitfields']:
+      str += '''
+
+/*!
+ * \\brief Converts the list of strings to one string concatinated with ' | '
+ * \\param _list The list of strings to convert
+ * \\returns The converted _list
+ */
+std::string {0}::stringListToString(std::vector<std::string> _list) noexcept {{
+  std::string lResult;
+  for( size_t i = 0; i < _list.size(); ++i ) {{
+    if( i != 0 ) {{
+      lResult += "{1}";
+    }}
+
+    lResult += _list[i];
+  }}
+  return lResult;
+}}
+
+'''.format(self.name, self.cfg['generator']['bitfieldConcat'])
+
       for i in self.enums:
         str += '''
 
