@@ -24,8 +24,9 @@ class Generator:
 
 
   def addEnums(self, incFile, enums):
-    self.incList.append(incFile)
-    self.enums += enums
+    if len(enums) > 0:
+      self.incList.append(incFile)
+      self.enums += enums
 
 
 
@@ -42,7 +43,7 @@ class Generator:
  * \\file {}
  * \\warning This is an automatically generated file!
  */
- 
+
 // clang-format off
 
 #pragma once
@@ -110,7 +111,7 @@ class Generator:
  * \\file {0}
  * \\warning This is an automatically generated file!
  */
- 
+
 // clang-format off
 
 #include "{1}"
