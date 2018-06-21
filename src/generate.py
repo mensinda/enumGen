@@ -247,8 +247,8 @@ std::vector<std::string> {5}::{1}_{4}_Raw( {3} _var ) noexcept {{
     pHpp = pathlib.Path(dir) / self.cfg['generator']['hppFile']
     pCpp = pathlib.Path(dir) / self.cfg['generator']['cppFile']
 
-    fHpp = open(pHpp, 'w')
-    fCpp = open(pCpp, 'w')
+    fHpp = open(str(pHpp), 'w')
+    fCpp = open(str(pCpp), 'w')
 
     fHpp.write(self.genHpp())
     fCpp.write(self.genCpp())

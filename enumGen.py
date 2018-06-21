@@ -85,7 +85,7 @@ class EnumGenerator:
 
       fileName = os.path.splitext(os.path.basename(self.args.input.name))[0] + '.json'
       path = pathlib.Path(dir) / fileName
-      fp = open(path, 'w')
+      fp = open(str(path), 'w')
       json.dump(out, fp, indent=2)
       logging.info('Wrote file {}'.format(path))
 
