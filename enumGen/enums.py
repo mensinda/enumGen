@@ -1,26 +1,36 @@
 import re
 import logging
+import typing as T
 
+if T.TYPE_CHECKING:
+  from .parser import Parser
+
+  class EnumDict(T.TypedDict):
+    scope:     str
+    isScoped:  bool
+    name:      str
+    entries:   T.Dict[str, T.Union[str, int]]
+    blackList: T.List[str]
 
 class Enums:
-  enums = []
+  def __init__(self) -> None:
+    self.enums: T.List['EnumDict'] = []
 
-  def addEnum(self, scope, isScoped, name, entries, blackList):
-    self.enums.append({
-      'scope': scope,
-      'isScoped': True if (isScoped) else False,
-      'name': name,
-      'entries': entries,
-      'blackList': blackList
-    })
-    logging.info(
-      'Found enum "{}" with {} entries with {} duplicates detected'.format(name, len(entries), len(blackList)))
+  def addEnum(self, scope: str, isScoped: bool, name: str, entries: T.Dict[str, T.Union[str, int]], blackList: T.List[str]) -> None:
+    self.enums += [{
+      'scope':     scope,
+      'isScoped':  isScoped,
+      'name':      name,
+      'entries':   entries,
+      'blackList': blackList,
+    }]
+    logging.info(f'Found enum "{name}" with {len(entries)} entries with {len(blackList)} duplicates detected')
 
-  def parseEnum(self, str, scope):
+  def parseEnum(self, raw: str, scope: str) -> None:
     # Get name and scope
-    decl = re.sub('{[^}]*}', '', str)  # remove the enum entries
+    decl = re.sub('{[^}]*}', '', raw)  # remove the enum entries
 
-    isClass = True if ('class' in decl or 'struct' in decl) else False
+    isClass   = True if ('class' in decl or 'struct' in decl) else False
     isTypedef = True if ('typedef' in decl) else False
 
     for i in ['class', 'struct', 'typedef', 'enum']:
@@ -32,18 +42,18 @@ class Enums:
     name = nameList[0] if (not isTypedef) else nameList[-1]
 
     ### Parse the enum body
-    body = re.sub('(^[^{]+{)|(}[^}]*$)', '', str)  # only the enum body
-    body = re.sub(' ', '', body)
-    body = body.split(',')
+    body_str = re.sub('(^[^{]+{)|(}[^}]*$)', '', raw)  # only the enum body
+    body_str = re.sub(' ', '', body_str)
+    body = body_str.split(',')
 
     ### Calculate enum values
-    enums = {}
+    enums: T.Dict[str, T.Union[str, int]] = {}
     nextValue = 0
     blackList = []
 
     for i in body:
       en = re.sub('=.*', '', i)
-      value = nextValue
+      value: T.Union[str, int] = nextValue
       nextValue += 1
 
       if ('=' in i):
@@ -60,8 +70,9 @@ class Enums:
         for j in ['0x[0-9A-Fa-f]+', '0b[01]+', '[0-9]', '[()\\+\\-\\*\\/]', '<<', '>>']:
           temp = re.sub(j, '', temp)
 
-        if (len(temp) == 0):
+        if len(temp) == 0:
           value = eval(val)
+          assert isinstance(value, int)
           nextValue = value + 1
         else:
           value = val
@@ -72,10 +83,10 @@ class Enums:
       enums[en] = value
 
     self.addEnum(scope, isClass, name, enums, blackList)
-    return True
 
-  def addEnumsFromList(self, li):
-    scopeStack = []
+  def parseScope(self, parser: 'Parser') -> bool:
+    scopeStack: T.List[str] = []
+    li = parser.getResult()
     for i in li:
       if (i == '#!POP_SCOPE'):
         scopeStack.pop()
@@ -89,11 +100,8 @@ class Enums:
       scope = '::'.join(scopeStack)
       self.parseEnum(i, scope)
 
-    if (len(scopeStack) != 0):
+    if scopeStack:
       logging.warning('Parsing error: scope stack not empty')
       return False
 
     return True
-
-  def addParser(self, p):
-    return self.addEnumsFromList(p.getResult())

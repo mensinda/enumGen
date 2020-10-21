@@ -1,7 +1,8 @@
 import logging
 import sys
 import re
-
+from pathlib import Path
+import typing as T
 
 # Extract enums from C++ source code
 # NOTE: this is not a complete C++ parser!
@@ -10,73 +11,74 @@ import re
 #
 # the output list contains #!PUSH_SCOPE=<name> and #!POP_SCOPE
 class Parser:
-  enums = []
+  def __init__(self, fp: Path):
+    self.scopeList: T.List[str] = []
+    self.file                   = fp
+    self.data                   = fp.read_text()
+    self.it                     = 0
 
-  def __init__(self, fp):
-    self.file = fp
-
-  def skipWhitespace(self):
+  def skipWhitespace(self) -> None:
     ws = [' ', '\t', '\n']
     while (self.notEOF() and self.get() in ws):
-      self.next()
+      self.advance()
 
-  def skipStack(self, open, close):
+  def skipStack(self, open_t: str, close_t: str) -> None:
     n = 0
-    if self.get() == open:
+    if self.get() == open_t:
       n += 1
-      self.next()
+      self.advance()
 
     while (n > 0 and self.notEOF()):
-      n = n + 1 if (self.get() == open) else n
-      n = n - 1 if (self.get() == close) else n
-      self.next()
+      n = n + 1 if (self.get() == open_t) else n
+      n = n - 1 if (self.get() == close_t) else n
+      self.advance()
 
   # read a word from the internal buffer self.data
-  def getWord(self):
+  def getWord(self) -> str:
     self.skipWhitespace()
-    str = ''
+    res = ''
     while (self.notEOF() and (self.get().isalnum() or self.get() == ':')):
-      str += self.get()
-      self.next()
+      res += self.get()
+      self.advance()
     self.skipWhitespace()
-    return str
+    return res
 
   # Advance the internal iterator by one
-  def next(self):
+  def advance(self) -> None:
     self.it += 1
 
   # Get the char at the current position
-  def get(self):
+  def get(self) -> str:
     return self.data[self.it] if self.notEOF() else ''
 
   # Check if the end was reached
-  def notEOF(self):
+  def notEOF(self) -> bool:
     return self.it < len(self.data)
 
   # cleanup the source code: remove strings, templates, comments, defines
   # makes it a lot easier to parse later
-  def cleanup(self):
+  def cleanup(self) -> None:
     newData = ''
 
-    self.data = re.sub('/\\*([^*]|\\*[^/])*\\*/', '', self.data)  # remove c style comments
-    self.data = re.sub('//[^\n]*', '', self.data)  # remove c++ comments
-    self.data = re.sub('\\\\\n', '', self.data)  # remove \\n  (for easy multi line strings and defines)
-    self.data = re.sub('\\\\"', '', self.data)  # remove \"   (for easy string removal
-    self.data = re.sub('#[^\n]*', '', self.data)  # remove defines
-    self.data = re.sub('\\[\\[[^]]*\\]\\]', '', self.data)  # c++11 attributes
-    self.data = re.sub('\t', ' ', self.data)  # tabs to spaces
-    self.data = re.sub('alignas[ \n]*\\([^)]*\\)', ' ', self.data) # alignas
+    self.data = re.sub('/\\*([^*]|\\*[^/])*\\*/',  '',  self.data)  # remove c style comments
+    self.data = re.sub('//[^\n]*',                 '',  self.data)  # remove c++ comments
+    self.data = re.sub('\\\\\n',                   '',  self.data)  # remove \\n  (for easy multi line strings and defines)
+    self.data = re.sub('\\\\"',                    '',  self.data)  # remove \"   (for easy string removal
+    self.data = re.sub('#[^\n]*',                  '',  self.data)  # remove defines
+    self.data = re.sub('\\[\\[[^]]*\\]\\]',        '',  self.data)  # c++11 attributes
+    self.data = re.sub('\t',                       ' ', self.data)  # tabs to spaces
+    self.data = re.sub('alignas[ \n]*\\([^)]*\\)', ' ', self.data)  # alignas
 
     ### Remove strings (regex are too greedy)
     while (self.notEOF()):
       if (self.get() == '"'):
-        self.next()
-        while (self.notEOF() and self.get() != '"'): self.next()
-        self.next()
+        self.advance()
+        while (self.notEOF() and self.get() != '"'): self.advance()
+        self.advance()
         continue
 
       newData += self.get()
-      self.next()
+      self.advance()
 
     self.data = newData
     self.it = 0
@@ -85,13 +87,12 @@ class Parser:
     self.data = re.sub('\n', '', self.data)  # remove newlines
     self.data = re.sub('(class |struct ) *([a-zA-Z_0-9]+)[a-zA-Z_0-9 ]*:[^{]*', '\\1 \\2 ', self.data)
     self.data = re.sub(' +', ' ', self.data)  # one space only
-    return True
 
   # Make the C++ scopes more readable and remove funcrion bodies, etc.
   # Outputs a list with just c++ commands, #!PUSH_SCOPE=<id>, #!POP_SCOPE and #!ACC=<normal|hidden>
-  def scopeWalker(self):
+  def scopeWalker(self) -> T.List[str]:
     newData = ''
-    stack = []
+    stack: T.List[str] = []
 
     while (self.notEOF()):
       self.skipWhitespace()
@@ -108,11 +109,11 @@ class Parser:
         if (self.get() == '}'):
           newData += '#!POP_SCOPE;'
           stack.pop()
-          self.next()
+          self.advance()
           continue
 
         newData += self.get()
-        self.next()
+        self.advance()
 
       word = self.getWord()
 
@@ -133,7 +134,7 @@ class Parser:
         # Meh :( either using or forward declaration ==> skip we wont need it anyway
         if (self.get() == ';'):
           newData += ';'  # just to be on the safe side
-          self.next()
+          self.advance()
 
         # Begin scope stack
         elif (self.get() == '{'):
@@ -143,7 +144,7 @@ class Parser:
           else:
             newData += '#!ACC=normal;'
           stack.append(id)
-          self.next()
+          self.advance()
 
         continue
 
@@ -152,10 +153,10 @@ class Parser:
         newData += 'enum '
         while (self.notEOF() and self.get() != ';'):
           newData += self.get()
-          self.next()
+          self.advance()
 
         newData += ';'
-        self.next()
+        self.advance()
         continue
 
       ### Word not found ==> append for now
@@ -169,7 +170,7 @@ class Parser:
     return newData.split(';')
 
   # Removes private scopes, and non enum c++ statements
-  def scopeCleaner(self, li):
+  def scopeCleaner(self, li: T.List[str]) -> T.List[str]:
     # remove all non control and non enum entries
     reg = re.compile('(^#![A-Z_]+.*$)|(^(typedef +)?enum +)')
     li = [i for i in li if reg.match(i)]
@@ -205,17 +206,13 @@ class Parser:
 
     return newList
 
-  def parse(self):
+  def parse(self) -> None:
     logging.info('Parsing file {}'.format(self.file.name))
-    self.file.seek(0)
-    self.data = self.file.read()
     self.it = 0
 
     self.cleanup()
     self.scopeList = self.scopeWalker()
     self.scopeList = self.scopeCleaner(self.scopeList)
 
-    return True
-
-  def getResult(self):
+  def getResult(self) -> T.List[str]:
     return self.scopeList
