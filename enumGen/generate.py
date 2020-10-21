@@ -15,16 +15,15 @@ if T.TYPE_CHECKING:
     fname:  str
 
 class Generator:
-  def __init__(self, cfg: 'Config', name: str) -> None:
+  def __init__(self, hppFile: Path, cppFile: Path, cfg: 'Config', name: str) -> None:
     self.cfg      = cfg
     self.name     = name
     self.maxIdLen = 0
+    self.hppFile  = hppFile.resolve()
+    self.cppFile  = cppFile.resolve()
     self.incList:   T.List[str]           = []
     self.enums_raw: T.List['EnumDict']    = []
     self.enums:     T.List['PocEnumDict'] = []
-
-    self.cfg.hppFile = re.sub('@CLASS_NAME@', name, self.cfg.hppFile)
-    self.cfg.cppFile = re.sub('@CLASS_NAME@', name, self.cfg.cppFile)
 
   def addEnums(self, incFile: str, enums: T.List['EnumDict']) -> None:
     if len(enums) > 0:
@@ -40,7 +39,7 @@ class Generator:
   def genHpp(self) -> str:
     raw_str = textwrap.dedent(f'''\
       /*!
-       * \\file {self.cfg.hppFile}
+       * \\file {self.hppFile.name}
        * \\warning This is an automatically generated file!
        */
 
@@ -49,6 +48,7 @@ class Generator:
       #pragma once
 
       #include <string>
+      #include <vector>
     ''')
 
     for inc in self.incList:
@@ -108,13 +108,13 @@ class Generator:
   def genCpp(self) -> str:
     raw_str = textwrap.dedent(f'''\
       /*!
-       * \\file {self.cfg.cppFile}
+       * \\file {self.cppFile.name}
        * \\warning This is an automatically generated file!
        */
 
       // clang-format off
 
-      #include "{self.cfg.hppFile}"
+      #include "{self.hppFile.name}"
 
       #define CHECK_BIT(v, x) (v & static_cast<{self.cfg.bitfieldType}>(x)) == static_cast<{self.cfg.bitfieldType}>(x)
 
@@ -218,9 +218,8 @@ class Generator:
     return raw_str + '\n\n// clang-format on\n\n'
 
 
-  def write(self, outdir: Path, projectRoot: Path) -> None:
+  def write(self) -> None:
     logging.info(f'Generating class {self.name} with {len(self.enums)} enums')
-    logging.info(f'Writing {self.cfg.hppFile}')
 
     ### set helper values
     self.maxIdLen = 0
@@ -240,13 +239,8 @@ class Generator:
       return x
 
     self.enums   = [calcID(x) for x in self.enums_raw]
-    self.incList = [os.path.relpath(x, outdir) if projectRoot.as_posix() in x else x for x in self.incList]
 
-    pHpp = outdir / self.cfg.hppFile
-    pCpp = outdir / self.cfg.cppFile
+    self.hppFile.write_text(self.genHpp())
+    self.cppFile.write_text(self.genCpp())
 
-    pHpp.write_text(self.genHpp())
-    pCpp.write_text(self.genCpp())
-
-    logging.info(f'Wrote {pHpp}')
-    logging.info(f'Wrote {pCpp}')
+    logging.info('Wrote source files')

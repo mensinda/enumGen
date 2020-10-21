@@ -16,8 +16,6 @@ class EnumGenerator:
   def __init__(self) -> None:
     argParser = argparse.ArgumentParser(description='Enum to String generator for C++')
 
-    argParser.add_argument('-d', dest='dir', metavar='DIR', help='the output directory', default='.', type=Path)
-    argParser.add_argument('-p', dest='project', metavar='DIR', help='the project root dir', default='.', type=Path)
     argParser.add_argument('-c', '--config', help='read config from CFG', metavar='CFG', type=Path)
     argParser.add_argument('-v', '--version', action='version', version='0.0.1')
     argParser.add_argument('-V', '--verbose', action='store_true', help='verbose output')
@@ -28,9 +26,12 @@ class EnumGenerator:
     subparsers = argParser.add_subparsers(title='commands')
     compileGroup = subparsers.add_parser('parse', help='compile c/c++ headers to enum lists')
     compileGroup.add_argument('input', help='input header file', type=Path)
+    compileGroup.add_argument('output', help='"compiled" output JSON file', type=Path)
 
     linkGroup = subparsers.add_parser('generate', help='link enum lists to a c++ class')
     linkGroup.add_argument('cls', help='create the C++ class <cls>')
+    linkGroup.add_argument('hpp', help='The output HPP file', type=Path)
+    linkGroup.add_argument('cpp', help='The output CPP file', type=Path)
     linkGroup.add_argument('enumFiles', nargs='+', help='JSON enum list files', type=Path)
 
     self.args: argparse.Namespace = argParser.parse_args()
@@ -48,33 +49,26 @@ class EnumGenerator:
       logging.info(f'Loading config file {cfgfile.name}')
       self.cfg.readJSON(cfgfile)
 
-    ### Check the output dir
-    outDir:      Path = self.args.dir
-    projectRoot: Path = self.args.project
-    outDir      = outDir.resolve()
-    projectRoot = projectRoot.resolve()
-
-    logging.info(f'Project root directory: {projectRoot}')
-    logging.info(f'Output directory:       {outDir}')
-    if not outDir.is_dir():
-      logging.error(f'Directory {outDir} does not exist')
-      return 1
-
     ### Write config
     if self.args.printCfg:
       print(self.cfg.toJSON())
+      return 0
 
     if self.args.writeCfg:
       cfgfile = self.args.writeCfg
       cfgfile = cfgfile.resolve()
       logging.info(f'Writing config file {cfgfile}')
       self.cfg.writeJSON(cfgfile)
+      return 0
 
     ### Begin parsing
     if 'input' in vars(self.args):
       assert isinstance(self.args.input, Path)
-      in_file: Path = self.args.input
-      in_file = in_file.resolve()
+      assert isinstance(self.args.output, Path)
+      in_file:  Path = self.args.input
+      out_file: Path = self.args.output
+      in_file  = in_file.resolve()
+      out_file = out_file.resolve()
       p = parser.Parser(in_file)
       e = enums.Enums()
       p.parse()
@@ -85,13 +79,14 @@ class EnumGenerator:
         'enums': e.enums
       }
 
-      path = outDir / f'{in_file.stem}.json'
-      path.write_text(json.dumps(out, indent=2))
-      logging.info(f'Wrote file {path}')
+      out_file.write_text(json.dumps(out, indent=2))
+      logging.info(f'Wrote file {out_file}')
 
     ### Generate C++ files
     if 'cls' in vars(self.args):
-      gen = generate.Generator(self.cfg, self.args.cls)
+      assert isinstance(self.args.hpp, Path)
+      assert isinstance(self.args.cpp, Path)
+      gen = generate.Generator(self.args.hpp, self.args.cpp, self.cfg, self.args.cls)
       for i in self.args.enumFiles:
         data = json.loads(i.read_text())
 
@@ -100,6 +95,6 @@ class EnumGenerator:
           assert isinstance(data['enums'], list)
           gen.addEnums(data['file'], data['enums'])
 
-      gen.write(outDir, projectRoot)
+      gen.write()
 
     return 0
