@@ -17,7 +17,7 @@ class EnumGenerator:
     argParser = argparse.ArgumentParser(description='Enum to String generator for C++')
 
     argParser.add_argument('-c', '--config', help='read config from CFG', metavar='CFG', type=Path)
-    argParser.add_argument('-v', '--version', action='version', version='0.0.1')
+    argParser.add_argument('-v', '--version', action='version', version='1.0.0')
     argParser.add_argument('-V', '--verbose', action='store_true', help='verbose output')
 
     argParser.add_argument('-C', dest='printCfg', action='store_true', help='print config and exit')
