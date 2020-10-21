@@ -37,7 +37,7 @@ class Parser:
   def getWord(self) -> str:
     self.skipWhitespace()
     res = ''
-    while (self.notEOF() and (self.get().isalnum() or self.get() == ':')):
+    while (self.notEOF() and (self.get().isalnum() or self.get() == ':' or self.get() == '_')):
       res += self.get()
       self.advance()
     self.skipWhitespace()
@@ -84,7 +84,7 @@ class Parser:
     self.it = 0
 
     # remove inherited class definitions
-    self.data = re.sub('\n', '', self.data)  # remove newlines
+    self.data = re.sub('\n', ' ', self.data)  # remove newlines
     self.data = re.sub('(class |struct ) *([a-zA-Z_0-9]+)[a-zA-Z_0-9 ]*:[^{]*', '\\1 \\2 ', self.data)
     self.data = re.sub(' +', ' ', self.data)  # one space only
 
@@ -118,17 +118,15 @@ class Parser:
       word = self.getWord()
 
       ### Templates... DELTE THEM!!! WHY CAN YOU DO TEMPLATES INSIDE OF TEMPLATES!?!?!?
-      if(word == 'template'):
-        self.skipWhitespace()
+      if word == 'template':
         if(self.get() != '<'):
           logging.warning('Expected < after the template keyword')
           continue
 
         self.skipStack('<', '>')
-        continue
 
       ### Handle namespaces
-      if (word in ['namespace', 'class', 'struct', 'extern']):
+      elif word in ['namespace', 'class', 'struct', 'extern']:
         id = self.getWord()
 
         # Meh :( either using or forward declaration ==> skip we wont need it anyway
@@ -146,10 +144,8 @@ class Parser:
           stack.append(id)
           self.advance()
 
-        continue
-
       ### Handle enums
-      if (word == 'enum'):
+      elif word == 'enum':
         newData += 'enum '
         while (self.notEOF() and self.get() != ';'):
           newData += self.get()
@@ -157,10 +153,15 @@ class Parser:
 
         newData += ';'
         self.advance()
-        continue
+
+      ### Remove function calls
+      elif self.get() == '(':
+        self.skipStack('(', ')')
+        newData += ';'
 
       ### Word not found ==> append for now
-      newData += word + ' '
+      else:
+        newData += word + ' '
 
     # Final cleanup
     newData = re.sub('public *:', '#!ACC=normal;', newData)
