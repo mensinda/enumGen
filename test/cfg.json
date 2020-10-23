@@ -3,6 +3,8 @@
   "namespace": "test",
   "useNamespace": false,
   "enableBitfields": true,
+  "enableGetList": true,
+  "enableFromStr": true,
   "bitfieldType": "uint64_t",
   "indent": 2,
   "bitfieldConcat": " | "

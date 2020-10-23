@@ -9,6 +9,7 @@ class Config:
     self.useNamespace    = False
     self.enableBitfields = True
     self.enableGetList   = True
+    self.enableFromStr   = True
     self.bitfieldType    = 'uint64_t'
 
     self.indent          = 2
@@ -23,6 +24,7 @@ class Config:
       'useNamespace': self.useNamespace,
       'enableBitfields': self.enableBitfields,
       'enableGetList': self.enableGetList,
+      'enableFromStr': self.enableFromStr,
       'bitfieldType': self.bitfieldType,
       'indent': self.indent,
       'bitfieldConcat': self.bitfieldConcat,
@@ -45,6 +47,7 @@ class Config:
     self.useNamespace    = data.get('useNamespace',    self.useNamespace)
     self.enableBitfields = data.get('enableBitfields', self.enableBitfields)
     self.enableGetList   = data.get('enableGetList',   self.enableGetList)
+    self.enableFromStr   = data.get('enableFromStr',   self.enableFromStr)
     self.indent          = data.get('indent',          self.indent)
     self.bitfieldConcat  = data.get('bitfieldConcat',  self.bitfieldConcat)
     self.defaultValue    = data.get('defaultValue',    self.defaultValue)

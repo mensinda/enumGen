@@ -48,6 +48,7 @@ class Generator:
       #pragma once
 
       #include <string>
+      #include <string_view>
       #include <vector>
     ''')
 
@@ -75,6 +76,14 @@ class Generator:
     for i in self.enums:
       pad = ' ' * (self.maxIdLen - len(i['id']))
       raw_str += self.indent(baseLevel) + f'{static}std::string {fName}( {i["id"]}{pad} _var ) noexcept;\n'
+
+    # From string declarations
+    if self.cfg.enableFromStr:
+      raw_str += '\n\n'
+      for i in self.enums:
+        pad_name = ' ' * (self.maxIdLen - len(i['fname']))
+        pad_id   = ' ' * (self.maxIdLen - len(i['id']))
+        raw_str += self.indent(baseLevel) + f'{static}{i["id"]}{pad_id} {i["fname"]}_fromStr{pad_name} ( std::string_view _var ) noexcept;\n'
 
     # Handle bitfields
     if self.cfg.enableBitfields:
@@ -133,6 +142,37 @@ class Generator:
     if self.cfg.namespace:
       raw_str += f'using namespace {self.cfg.namespace};\n\n'
 
+    if self.cfg.enableFromStr:
+      raw_str += textwrap.dedent('''
+        namespace {
+          const size_t FNV1A_BASE  = 2166136261;
+          const size_t FNV1A_PRIME = 16777619;
+
+          inline size_t fnv1aHash(const char *data) {
+            size_t hash = FNV1A_BASE;
+            while (*data != 0) {
+              hash ^= static_cast<size_t>(*(data++));
+              hash *= FNV1A_PRIME;
+            }
+            return hash;
+          }
+
+          constexpr size_t fnv1aHash(const char *data, size_t n) {
+            size_t hash = FNV1A_BASE;
+            for (size_t i = 0; i < n; ++i) {
+              hash ^= static_cast<size_t>(data[i]);
+              hash *= FNV1A_PRIME;
+            }
+            return hash;
+          }
+
+          size_t fnv1aHash(std::string_view _str) { return fnv1aHash(_str.data(), _str.size()); }
+
+          constexpr size_t operator"" _h(char const *data, size_t n) { return fnv1aHash(data, n); }
+        }
+
+        ''')
+
     fName = self.cfg.funcName
 
     # Generate switch case
@@ -163,6 +203,32 @@ class Generator:
 
       raw_str += self.indent(2) + f'default: return "{self.cfg.defaultValue}";\n'
       raw_str += self.indent(1) + '}\n}'
+
+    if self.cfg.enableFromStr:
+      for i in self.enums:
+        raw_str += textwrap.dedent(f'''
+
+          /*!
+          * \\brief Converts the std::string_view to an {i['id']} enum
+          * \\param _var The string to convert
+          * \\returns _var converted to {i['id']} or static_cast<{i["id"]}>(-1) if there was no match
+          */
+          {i['id']} {self.name}::{i['fname']}_fromStr( std::string_view _var ) noexcept {{
+          {self.indent(1)}switch( fnv1aHash(_var) ) {{
+          ''')
+
+        scope = i['scope']
+        if i['isScoped']:
+          scope += '::' + i['name']
+
+        for j in i['entries'].keys():
+          enum_id = scope + '::' + j
+          enum_id = re.sub('^::', '', enum_id)
+          pad = ' ' * (i['maxLen'] - len(j))
+          raw_str += self.indent(2) + f'case "{j}"_h:{pad} return {enum_id}{pad} ;\n'.format(enum_id, j, pad)
+
+        raw_str += self.indent(2) + f'default: return static_cast<{i["id"]}>(-1);\n'
+        raw_str += self.indent(1) + '}\n}'
 
     # Generate common function
     if self.cfg.enableBitfields:
