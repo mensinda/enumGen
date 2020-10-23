@@ -76,6 +76,7 @@ class Generator:
       pad = ' ' * (self.maxIdLen - len(i['id']))
       raw_str += self.indent(baseLevel) + f'{static}std::string {fName}( {i["id"]}{pad} _var ) noexcept;\n'
 
+    # Handle bitfields
     if self.cfg.enableBitfields:
       raw_str += '\n\n' + self.indent(baseLevel)
       raw_str += f'{static}std::string stringListToString(std::vector<std::string> _list) noexcept;\n\n'
@@ -93,6 +94,15 @@ class Generator:
         pad = ' ' * (self.maxIdLen - len(i['fname']))
         bitName = f'{i["fname"]}_{fName}_Raw {pad}'
         raw_str += self.indent(baseLevel) + f'{static}std::vector<std::string> {bitName}( {btype} _var ) noexcept;\n'
+
+    # List of enum values
+    if self.cfg.enableGetList:
+      raw_str += '\n\n'
+      for i in self.enums:
+        pad_name = ' ' * (self.maxIdLen - len(i['fname']))
+        pad_id   = ' ' * (self.maxIdLen - len(i['id']))
+        bitName = f'getAll_{i["fname"]} {pad_name}'
+        raw_str += self.indent(baseLevel) + f'{static}std::vector< {i["id"]}{pad_id} > {bitName}() noexcept;\n'
 
     ### End class namespace
     if self.cfg.useNamespace:
@@ -214,6 +224,34 @@ class Generator:
           raw_str += 'if ( CHECK_BIT( _var, {0}{2} ) ) {{ list.emplace_back( "{1}"{2} ); }}\n'.format(id, j, pad)
 
         raw_str += '\n{}return list;\n}}'.format(self.indent(1))
+
+    # List of enum values
+    if self.cfg.enableGetList:
+      raw_str += '\n\n\n'
+
+      for i in self.enums:
+        raw_str += textwrap.dedent(f'''
+
+          /*!
+           * \\brief Retrieves all unique values of {i['id']}
+           * \\returns a std::vector<{i['id']}> of all unique values
+           */
+          std::vector<{i['id']}> {self.name}::getAll_{i['fname']}() noexcept {{
+          {self.indent(1)}return {{
+          ''')
+
+        scope = i['scope']
+        if i['isScoped']:
+          scope += '::' + i['name']
+
+        for j in i['entries'].keys():
+          if j in i['blackList']:
+            continue
+
+          enum_id = scope + '::' + j
+          enum_id = re.sub('^::', '', enum_id)
+          raw_str += f'{self.indent(2)}{enum_id},\n'
+        raw_str += f'{self.indent(1)}}};\n}}'
 
     return raw_str + '\n\n// clang-format on\n\n'
 

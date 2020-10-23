@@ -8,6 +8,7 @@ class Config:
     self.namespace       = ''
     self.useNamespace    = False
     self.enableBitfields = True
+    self.enableGetList   = True
     self.bitfieldType    = 'uint64_t'
 
     self.indent          = 2
@@ -21,6 +22,7 @@ class Config:
       'namespace': self.namespace,
       'useNamespace': self.useNamespace,
       'enableBitfields': self.enableBitfields,
+      'enableGetList': self.enableGetList,
       'bitfieldType': self.bitfieldType,
       'indent': self.indent,
       'bitfieldConcat': self.bitfieldConcat,
@@ -42,6 +44,7 @@ class Config:
     self.namespace       = data.get('namespace',       self.namespace)
     self.useNamespace    = data.get('useNamespace',    self.useNamespace)
     self.enableBitfields = data.get('enableBitfields', self.enableBitfields)
+    self.enableGetList   = data.get('enableGetList',   self.enableGetList)
     self.indent          = data.get('indent',          self.indent)
     self.bitfieldConcat  = data.get('bitfieldConcat',  self.bitfieldConcat)
     self.defaultValue    = data.get('defaultValue',    self.defaultValue)
