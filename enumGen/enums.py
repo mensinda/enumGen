@@ -39,6 +39,10 @@ class Enums:
     nameList = decl.split(' ')
     nameList = list(filter(None, nameList))  # remove empty entries
 
+    if not nameList:
+      logging.warning('Could not determine the name of the enum --> skipping')
+      return
+
     name = nameList[0] if (not isTypedef) else nameList[-1]
 
     ### Parse the enum body
