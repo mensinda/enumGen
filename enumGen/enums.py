@@ -60,6 +60,9 @@ class Enums:
       value: T.Union[str, int] = nextValue
       nextValue += 1
 
+      if not en:
+        continue
+
       if ('=' in i):
         val = re.sub('.*=', '', i)
 
